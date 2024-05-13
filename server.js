@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 const validateFormFields = require("./validationRules/formValidation")
 
 const fs = require("fs");
+const databasePath = process.env.DATABASE_URL;
 
 
 const app = express();
@@ -59,7 +60,6 @@ app.post("/submit-form", (req, res) => {
             gender,
         };
 
-        const databasePath = "./database.json"
 
         fs.readFile(databasePath, "utf8", (error, data) => {
             let database = [];
