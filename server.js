@@ -72,9 +72,10 @@ app.post("/submit-form", (req, res) => {
                    }
                 } catch (parseErr) {
                     console.error("Error parsing JSON from database.json:", parseErr)
-                    return res.status(500).json({
-                        message: "Error reading database file"
-                    })
+                    database = [];
+                    // return res.status(500).json({
+                    //     message: "Error reading database file"
+                    // })
                 }
                 
             }
