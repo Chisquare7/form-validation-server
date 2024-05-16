@@ -1,104 +1,101 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const validateFormFields = require("./validationRules/formValidation")
-
 const fs = require("fs");
+const path = require("path")
 const cors = require("cors");
-const databasePath = process.env.DATABASE_URL;
+require("dotenv").config();
+
 
 
 const app = express();
 const PORT = process.env.PORT || 4050;
 
-// app.use((req, res, next) => {
-//     res.header(
-// 			"Access-Control-Allow-Origin",
-// 			"https://form-validation-server.onrender.com"
-// 		);
-//     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-//     res.header("Access-Control-Allow-Headers", "Content-Type");
-//     next();
-// })
-
-// app.options("*", (req, res) => {
-// 	res.header(
-// 		"Access-Control-Allow-Origin",
-// 		"https://form-validation-server.onrender.com"
-// 	);
-// 	res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-// 	res.header("Access-Control-Allow-Headers", "Content-Type");
-// 	res.status(200).send();
-// });
-
-app.use(bodyParser.urlencoded({ extended: true }));
-// app.use(bodyParser.json());
-
-app.use(express.static("public"));
+// app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 app.use(cors());
+
+app.use(express.json());
+app.use(express.static("public"));
+
 
 app.post("/submit-form", (req, res) => {
     const formData = req.body;
 
-    console.log("Received formData:", formData);
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.phone || !formData.gender) {
+        return res.status(400).json({
+            error: "All form fields are required"
+        })
+    }
 
-    const firstName = formData.firstName;
-    const lastName = formData.lastName;
-    const otherNames = formData.otherNames;
-    const email = formData.email;
-    const phone = formData.phone;
-    const gender = formData.gender;
-    
-    const errors = validateFormFields(formData);
+    const databasePath = process.env.DATABASE_URL || path.join(__dirname, "database.json");
 
-    if (errors.length > 0) {
-        res.status(400).json({ errors });
-    } else {
-        const formData = {
-            firstName,
-            lastName,
-            otherNames,
-            email,
-            phone,
-            gender,
-        };
+    fs.readFile(databasePath, "utf8", (error, data) => {
 
+        if (error && error.code !== "ENOENT") {
+            console.error(error);
+            return res.status(500).json({
+                error: "Internal Server Error"
+            })
+        }
+        
+        let database = [];
 
-        fs.readFile(databasePath, "utf8", (error, data) => {
-            let database = [];
+        if (data) {
+            database = JSON.parse(data);
+        }
 
-            if (!error && data) {
-                try {
-                   database = JSON.parse(data);
-                   if (!Array.isArray(database)) {
-                       throw new Error("Database is not an array");
-                   }
-                } catch (parseErr) {
-                    console.error("Error parsing JSON from database.json:", parseErr)
-                    database = [];
-                    // return res.status(500).json({
-                    //     message: "Error reading database file"
-                    // })
-                }
-                
-            }
+        database.push(formData);
 
-            database.push(formData);
+        console.log("Received formData:", formData);
 
-            fs.writeFile(databasePath, JSON.stringify(database, null, 2), "utf8", (error) => {
+        fs.writeFile(
+            databasePath,
+            JSON.stringify(database, null, 2),
+            (error) => {
                 if (error) {
-                    console.error("Error encountered when writing to database.json:", error);
-                    res.status(500).json({
-                        message: "An error occurred while saving the form data."
-                    })
+                    console.error(
+                        "Error encountered when writing to database.json:",
+                        error
+                    );
+                    return res.status(500).json({
+                        message: "An error occurred while saving the form data.",
+                    });
                 } else {
                     res.status(200).json({
-                        message: "Form data submitted successfully!"
-                    })
+                        message: "Form data submitted successfully!",
+                    });
                 }
-            })
-        })
+            }
+        );
+    });
 
-    }
+
+    // console.log("Received formData:", formData);
+
+    // const firstName = formData.firstName;
+    // const lastName = formData.lastName;
+    // const otherNames = formData.otherNames;
+    // const email = formData.email;
+    // const phone = formData.phone;
+    // const gender = formData.gender;
+    
+    // const errors = validateFormFields(formData);
+
+    // if (errors.length > 0) {
+    //     res.status(400).json({ errors });
+    // } else {
+    //     const formData = {
+    //         firstName,
+    //         lastName,
+    //         otherNames,
+    //         email,
+    //         phone,
+    //         gender,
+    //     };
+
+
+    // }
 })
 
 app.listen(PORT, () => {
